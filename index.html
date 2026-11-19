@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XBP - Quality Feedback Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #0f172a; }
+    .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Toast -->
+  <div id="toast" class="fixed top-5 right-5 z-50 hidden">
+    <div id="toastContent" class="px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white"></div>
+  </div>
+
+  <!-- LOGIN VIEW -->
+  <div id="loginView" class="flex-1 flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100">
+      <div class="p-8">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md">XBP</div>
+          <div>
+            <h1 class="text-xl font-bold text-slate-900">Quality Feedback Tracker</h1>
+            <p class="text-xs text-slate-500">Sign in to access your quality portal</p>
+          </div>
+        </div>
+
+        <form id="loginForm" class="space-y-4">
+          <div>
+            <label for="username" class="block text-sm font-medium text-slate-700 mb-1">Username / User ID</label>
+            <input type="text" id="username" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="Enter your username" />
+          </div>
+          <div>
+            <label for="password" class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+            <input type="password" id="password" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="Enter your password" />
+          </div>
+          <div id="loginError" class="hidden text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-3"></div>
+          <button type="submit" id="loginBtn" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition text-sm">Sign In</button>
+        </form>
+      </div>
+      <div class="bg-slate-50 px-8 py-4 border-t border-slate-100 text-center">
+        <p class="text-xs text-slate-500">XBP Quality Assurance • Automated Defect Directory</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASSWORD RESET VIEW -->
+  <div id="resetView" class="hidden flex-1 flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100">
+      <div class="p-8">
+        <h2 class="text-xl font-bold text-slate-900">Password Reset Required</h2>
+        <p class="text-sm text-slate-600 mt-1 mb-6">
+          You signed in with the temporary password. Create a new password for <span id="resetUserLabel" class="font-semibold text-slate-900"></span>.
+        </p>
+        <form id="resetForm" class="space-y-4">
+          <div>
+            <label for="newPassword" class="block text-sm font-medium text-slate-700 mb-1">New Password</label>
+            <input type="password" id="newPassword" required minlength="6" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="Minimum 6 characters" />
+          </div>
+          <div>
+            <label for="confirmPassword" class="block text-sm font-medium text-slate-700 mb-1">Confirm New Password</label>
+            <input type="password" id="confirmPassword" required minlength="6" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="Re-enter new password" />
+          </div>
+          <div id="resetError" class="hidden text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-3"></div>
+          <div class="flex gap-3 pt-2">
+            <button type="button" id="cancelResetBtn" class="w-1/3 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg text-sm">Cancel</button>
+            <button type="submit" id="resetBtn" class="w-2/3 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm text-sm">Update & Continue</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APPLICATION SHELL -->
+  <div id="appView" class="hidden flex-1 flex flex-col">
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+      <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">XBP</div>
+          <div>
+            <span class="font-bold text-slate-900 text-base sm:text-lg">Quality Feedback Tracker</span>
+            <span id="roleBadge" class="ml-2 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200"></span>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="text-right hidden sm:block">
+            <p class="text-xs text-slate-500">Logged in as</p>
+            <p id="loggedUserDisplay" class="text-sm font-semibold text-slate-800"></p>
+          </div>
+          <button type="button" id="refreshBtn" class="px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg">Refresh</button>
+          <button type="button" id="logoutBtn" class="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg">Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- USER DASHBOARD -->
+    <main id="userDashboard" class="hidden flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-medium text-slate-500 uppercase">Total Assigned Defects</p>
+          <p id="userTotalCount" class="text-2xl font-bold text-slate-900 mt-1">0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-medium text-amber-600 uppercase">Pending Acknowledgement</p>
+          <p id="userPendingCount" class="text-2xl font-bold text-amber-600 mt-1">0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-medium text-emerald-600 uppercase">Acknowledged</p>
+          <p id="userAckCount" class="text-2xl font-bold text-emerald-600 mt-1">0</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">Your Error Defect Directory</h2>
+            <p class="text-xs text-slate-500">Review each defect record below and click Acknowledge to confirm.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <input type="text" id="userSearchInput" placeholder="Search image, field, site..." class="px-3.5 py-2 text-xs border border-slate-300 rounded-lg outline-none w-56" />
+            <select id="userStatusFilter" class="px-3.5 py-2 text-xs border border-slate-300 rounded-lg outline-none bg-white">
+              <option value="ALL">All Statuses</option>
+              <option value="PENDING">Pending Only</option>
+              <option value="ACKNOWLEDGED">Acknowledged Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse whitespace-nowrap">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase">
+                <th class="py-3 px-4">Date</th>
+                <th class="py-3 px-4">Image Number</th>
+                <th class="py-3 px-4">Field Name</th>
+                <th class="py-3 px-4">Bill TYPE</th>
+                <th class="py-3 px-4">FIELD DESCRIPTION</th>
+                <th class="py-3 px-4">UserID</th>
+                <th class="py-3 px-4">KeyedAs</th>
+                <th class="py-3 px-4">ShouldBe</th>
+                <th class="py-3 px-4">Site Name</th>
+                <th class="py-3 px-4 text-center sticky right-0 bg-slate-50">Acknowledgement</th>
+              </tr>
+            </thead>
+            <tbody id="userDefectsBody" class="divide-y divide-slate-100 text-xs text-slate-700"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <!-- SUPERVISOR DASHBOARD -->
+    <main id="supervisorDashboard" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-medium text-slate-500 uppercase">Total Reported Errors</p>
+          <p id="supTotalCount" class="text-3xl font-bold text-slate-900 mt-1">0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-medium text-emerald-600 uppercase">Total Acknowledged</p>
+          <p id="supAckCount" class="text-3xl font-bold text-emerald-600 mt-1">0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-medium text-amber-600 uppercase">Total Pending Cases</p>
+          <p id="supPendingCount" class="text-3xl font-bold text-amber-600 mt-1">0</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">Team Error Summary (Date-Wise & User-Wise)</h2>
+            <p class="text-xs text-slate-500">Track reported defects, acknowledged cases, and pending follow-ups.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <input type="text" id="supDateFilter" placeholder="Filter by Date..." class="px-3.5 py-2 text-xs border border-slate-300 rounded-lg outline-none w-44" />
+            <input type="text" id="supUserFilter" placeholder="Filter by UserID..." class="px-3.5 py-2 text-xs border border-slate-300 rounded-lg outline-none w-44" />
+          </div>
+        </div>
+
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
+                <th class="py-3.5 px-5">Date</th>
+                <th class="py-3.5 px-5">UserID</th>
+                <th class="py-3.5 px-5 text-center">Total Errors Reported</th>
+                <th class="py-3.5 px-5 text-center">Acknowledged Cases</th>
+                <th class="py-3.5 px-5 text-center">Pending Cases</th>
+                <th class="py-3.5 px-5">Completion Progress</th>
+              </tr>
+            </thead>
+            <tbody id="supervisorTableBody" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    var API_URL = [
+      'https://script.google.com/macros/s/',
+      'AKfycbwQIKzTuuVMCFZNJPFoNUrZ24FJjOY2w2PG5iCTIsXQPg_FLn7TJawexqDs2cBj3vmH',
+      '/exec'
+    ].join('');
+
+    var currentUser = null;
+    var userDefectsData = [];
+    var supervisorSummaryData = [];
+
+    function byId(id) {
+      return document.getElementById(id);
+    }
+
+    function showEl(id) {
+      byId(id).classList.remove('hidden');
+    }
+
+    function hideEl(id) {
+      byId(id).classList.add('hidden');
+    }
+
+    async function callApi(payload) {
+      var res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        throw new Error('HTTP ' + res.status);
+      }
+      return await res.json();
+    }
+
+    function showToast(msg, isErr) {
+      var content = byId('toastContent');
+      content.className = 'px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white ';
+      content.className += isErr ? 'bg-red-600' : 'bg-emerald-600';
+      content.textContent = msg;
+      showEl('toast');
+      setTimeout(function() { hideEl('toast'); }, 3500);
+    }
+
+    byId('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var u = byId('username').value.trim();
+      var p = byId('password').value.trim();
+      var btn = byId('loginBtn');
+      var err = byId('loginError');
+
+      hideEl('loginError');
+      btn.disabled = true;
+      btn.textContent = 'Signing in...';
+
+      try {
+        var res = await callApi({ action: 'login', username: u, password: p });
+        if (!res.success) {
+          err.textContent = res.message || 'Login failed.';
+          showEl('loginError');
+          return;
+        }
+        currentUser = { username: res.username, role: res.role };
+        if (res.requiresReset) {
+          hideEl('loginView');
+          showEl('resetView');
+          byId('resetUserLabel').textContent = res.username;
+        } else {
+          enterApp();
+        }
+      } catch (ex) {
+        err.textContent = 'Connection error: Please verify your Web App deployment.';
+        showEl('loginError');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+      }
+    });
+
+    byId('resetForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var np = byId('newPassword').value.trim();
+      var cp = byId('confirmPassword').value.trim();
+      var btn = byId('resetBtn');
+      var err = byId('resetError');
+
+      hideEl('resetError');
+      if (np !== cp) {
+        err.textContent = 'Passwords do not match.';
+        showEl('resetError');
+        return;
+      }
+      if (np === 'Welcome@123') {
+        err.textContent = 'Choose a password different from Welcome@123.';
+        showEl('resetError');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Updating...';
+
+      try {
+        var res = await callApi({
+          action: 'resetPassword',
+          username: currentUser.username,
+          newPassword: np
+        });
+        if (!res.success) {
+          err.textContent = res.message || 'Reset failed.';
+          showEl('resetError');
+          return;
+        }
+        showToast('Password updated successfully!', false);
+        byId('resetForm').reset();
+        enterApp();
+      } catch (ex) {
+        err.textContent = 'Error: ' + ex.message;
+        showEl('resetError');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Update & Continue';
+      }
+    });
+
+    function enterApp() {
+      hideEl('loginView');
+      hideEl('resetView');
+      showEl('appView');
+
+      byId('loggedUserDisplay').textContent = currentUser.username;
+      byId('roleBadge').textContent = currentUser.role;
+
+      var role = String(currentUser.role).trim().toLowerCase();
+      if (role === 'supervisor') {
+        hideEl('userDashboard');
+        showEl('supervisorDashboard');
+        loadSupervisorDashboard();
+      } else {
+        hideEl('supervisorDashboard');
+        showEl('userDashboard');
+        loadUserDefects();
+      }
+    }
+
+    function logout() {
+      currentUser = null;
+      userDefectsData = [];
+      supervisorSummaryData = [];
+      byId('loginForm').reset();
+      byId('resetForm').reset();
+      hideEl('appView');
+      hideEl('resetView');
+      showEl('loginView');
+    }
+
+    byId('logoutBtn').addEventListener('click', logout);
+    byId('cancelResetBtn').addEventListener('click', logout);
+    byId('refreshBtn').addEventListener('click', function() {
+      if (!currentUser) return;
+      var role = String(currentUser.role).trim().toLowerCase();
+      if (role === 'supervisor') {
+        loadSupervisorDashboard();
+      } else {
+        loadUserDefects();
+      }
+      showToast('Data refreshed', false);
+    });
+
+    byId('userSearchInput').addEventListener('input', renderUserTable);
+    byId('userStatusFilter').addEventListener('change', renderUserTable);
+    byId('supDateFilter').addEventListener('input', renderSupervisorTable);
+    byId('supUserFilter').addEventListener('input', renderSupervisorTable);
+
+    function setTableMessage(tbody, cols, text, isErr) {
+      tbody.innerHTML = '';
+      var tr = document.createElement('tr');
+      var td = document.createElement('td');
+      td.colSpan = cols;
+      td.className = 'py-10 text-center ' + (isErr ? 'text-red-500' : 'text-slate-400');
+      td.textContent = text;
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    }
+
+    async function loadUserDefects() {
+      var tbody = byId('userDefectsBody');
+      setTableMessage(tbody, 10, 'Loading your defect records...', false);
+
+      try {
+        var res = await callApi({ action: 'getUserDefects', username: currentUser.username });
+        if (!res.success) {
+          setTableMessage(tbody, 10, res.message, true);
+          return;
+        }
+        userDefectsData = res.defects || [];
+        updateUserStats();
+        renderUserTable();
+      } catch (ex) {
+        setTableMessage(tbody, 10, 'Failed to load: ' + ex.message, true);
+      }
+    }
+
+    function updateUserStats() {
+      var total = userDefectsData.length;
+      var ack = userDefectsData.filter(function(d) {
+        return d.acknowledgement.toLowerCase() === 'acknowledged';
+      }).length;
+      byId('userTotalCount').textContent = total;
+      byId('userAckCount').textContent = ack;
+      byId('userPendingCount').textContent = total - ack;
+    }
+
+    function renderUserTable() {
+      var tbody = byId('userDefectsBody');
+      var q = byId('userSearchInput').value.trim().toLowerCase();
+      var status = byId('userStatusFilter').value;
+
+      var list = userDefectsData.filter(function(item) {
+        var isAck = item.acknowledgement.toLowerCase() === 'acknowledged';
+        if (status === 'PENDING' && isAck) return false;
+        if (status === 'ACKNOWLEDGED' && !isAck) return false;
+        if (!q) return true;
+        var visibleFields = [
+          item.date, item.imageNumber, item.fieldName, item.billType,
+          item.fieldDescription, item.userId, item.keyedAs, item.shouldBe,
+          item.siteName, item.acknowledgement
+        ];
+        return visibleFields.some(function(v) {
+          return String(v || '').toLowerCase().includes(q);
+        });
+      });
+
+      if (list.length === 0) {
+        setTableMessage(tbody, 10, 'No matching defect records found.', false);
+        return;
+      }
+
+      tbody.innerHTML = '';
+      list.forEach(function(row) {
+        var tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition';
+
+        var cols = [
+          { val: row.date, cls: 'py-3 px-4 font-medium text-slate-900' },
+          { val: row.imageNumber, cls: 'py-3 px-4 font-mono text-indigo-700' },
+          { val: row.fieldName, cls: 'py-3 px-4 font-medium' },
+          { val: row.billType, cls: 'py-3 px-4' },
+          { val: row.fieldDescription, cls: 'py-3 px-4 max-w-xs truncate' },
+          { val: row.userId, cls: 'py-3 px-4 font-medium' },
+          { val: row.keyedAs, cls: 'py-3 px-4 text-red-600 bg-red-50/40 font-medium' },
+          { val: row.shouldBe, cls: 'py-3 px-4 text-emerald-700 bg-emerald-50/40 font-medium' },
+          { val: row.siteName, cls: 'py-3 px-4' }
+        ];
+
+        cols.forEach(function(c) {
+          var td = document.createElement('td');
+          td.className = c.cls;
+          td.textContent = c.val || '';
+          td.title = c.val || '';
+          tr.appendChild(td);
+        });
+
+        var actionTd = document.createElement('td');
+        actionTd.className = 'py-3 px-4 text-center sticky right-0 bg-white';
+
+        var isAck = row.acknowledgement.toLowerCase() === 'acknowledged';
+        if (isAck) {
+          var badge = document.createElement('span');
+          badge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800';
+          badge.textContent = 'Acknowledged';
+          actionTd.appendChild(badge);
+        } else {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg';
+          btn.textContent = 'Acknowledge';
+          btn.addEventListener('click', function() {
+            handleAcknowledge(row.rowIndex, btn);
+          });
+          actionTd.appendChild(btn);
+        }
+
+        tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function handleAcknowledge(rowIndex, btn) {
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      try {
+        var res = await callApi({
+          action: 'acknowledgeDefect',
+          rowIndex: rowIndex,
+          username: currentUser.username
+        });
+        if (!res.success) {
+          showToast(res.message || 'Failed to acknowledge', true);
+          btn.disabled = false;
+          btn.textContent = 'Acknowledge';
+          return;
+        }
+        var target = userDefectsData.find(function(d) { return d.rowIndex === rowIndex; });
+        if (target) target.acknowledgement = 'Acknowledged';
+        updateUserStats();
+        renderUserTable();
+        showToast('Defect acknowledged and saved.', false);
+      } catch (ex) {
+        showToast('Network error while saving.', true);
+        btn.disabled = false;
+        btn.textContent = 'Acknowledge';
+      }
+    }
+
+    async function loadSupervisorDashboard() {
+      var tbody = byId('supervisorTableBody');
+      setTableMessage(tbody, 6, 'Loading supervisor analytics...', false);
+
+      try {
+        var res = await callApi({ action: 'getSupervisorDashboard' });
+        if (!res.success) {
+          setTableMessage(tbody, 6, res.message, true);
+          return;
+        }
+        supervisorSummaryData = res.summary || [];
+        var totals = res.totals || { total: 0, acknowledged: 0, pending: 0 };
+        byId('supTotalCount').textContent = totals.total;
+        byId('supAckCount').textContent = totals.acknowledged;
+        byId('supPendingCount').textContent = totals.pending;
+        renderSupervisorTable();
+      } catch (ex) {
+        setTableMessage(tbody, 6, 'Failed to load: ' + ex.message, true);
+      }
+    }
+
+    function renderSupervisorTable() {
+      var tbody = byId('supervisorTableBody');
+      var dQuery = byId('supDateFilter').value.trim().toLowerCase();
+      var uQuery = byId('supUserFilter').value.trim().toLowerCase();
+
+      var list = supervisorSummaryData.filter(function(r) {
+        var mDate = !dQuery || r.date.toLowerCase().includes(dQuery);
+        var mUser = !uQuery || r.userId.toLowerCase().includes(uQuery);
+        return mDate && mUser;
+      });
+
+      if (list.length === 0) {
+        setTableMessage(tbody, 6, 'No records match the current filters.', false);
+        return;
+      }
+
+      tbody.innerHTML = '';
+      list.forEach(function(r) {
+        var pct = r.totalErrors > 0 ? Math.round((r.acknowledged / r.totalErrors) * 100) : 0;
+        var tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition';
+
+        var tdDate = document.createElement('td');
+        tdDate.className = 'py-3.5 px-5 font-medium text-slate-900';
+        tdDate.textContent = r.date;
+
+        var tdUser = document.createElement('td');
+        tdUser.className = 'py-3.5 px-5 font-semibold text-indigo-700';
+        tdUser.textContent = r.userId;
+
+        var tdTot = document.createElement('td');
+        tdTot.className = 'py-3.5 px-5 text-center font-bold text-slate-800';
+        tdTot.textContent = r.totalErrors;
+
+        var tdAck = document.createElement('td');
+        tdAck.className = 'py-3.5 px-5 text-center';
+        var ackSpan = document.createElement('span');
+        ackSpan.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800';
+        ackSpan.textContent = r.acknowledged;
+        tdAck.appendChild(ackSpan);
+
+        var tdPen = document.createElement('td');
+        tdPen.className = 'py-3.5 px-5 text-center';
+        var penSpan = document.createElement('span');
+        var penCls = r.pending > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600';
+        penSpan.className = 'px-2.5 py-1 rounded-full text-xs font-semibold ' + penCls;
+        penSpan.textContent = r.pending;
+        tdPen.appendChild(penSpan);
+
+        var tdProg = document.createElement('td');
+        tdProg.className = 'py-3.5 px-5 w-52';
+        var wrap = document.createElement('div');
+        wrap.className = 'flex items-center gap-2';
+        var barBg = document.createElement('div');
+        barBg.className = 'flex-1 h-2 bg-slate-200 rounded-full overflow-hidden';
+        var barFill = document.createElement('div');
+        barFill.className = 'h-full bg-emerald-500 rounded-full';
+        barFill.style.width = pct + '%';
+        barBg.appendChild(barFill);
+        var pctLabel = document.createElement('span');
+        pctLabel.className = 'text-xs font-semibold text-slate-600 w-9 text-right';
+        pctLabel.textContent = pct + '%';
+        wrap.appendChild(barBg);
+        wrap.appendChild(pctLabel);
+        tdProg.appendChild(wrap);
+
+        tr.appendChild(tdDate);
+        tr.appendChild(tdUser);
+        tr.appendChild(tdTot);
+        tr.appendChild(tdAck);
+        tr.appendChild(tdPen);
+        tr.appendChild(tdProg);
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
