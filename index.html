@@ -22,15 +22,11 @@
 
   <!-- LOGIN VIEW WITH FULL-SCREEN BACKGROUND VIDEO -->
   <div id="loginView" class="relative flex-1 flex items-center justify-center p-4 overflow-hidden bg-slate-950">
-    <!-- Background Video -->
     <video autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover z-0">
       <source src="home.mp4" type="video/mp4" />
     </video>
-
-    <!-- Subtle Dark Overlay for Readability -->
     <div class="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px] z-10"></div>
 
-    <!-- Login Card -->
     <div class="relative z-20 w-full max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20">
       <div class="p-8">
         <div class="mb-6">
@@ -117,6 +113,7 @@
 
     <!-- USER DASHBOARD -->
     <main id="userDashboard" class="hidden flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <!-- Top KPI Row -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <p class="text-xs font-medium text-slate-500 uppercase">Total Assigned Defects</p>
@@ -132,6 +129,34 @@
         </div>
       </div>
 
+      <!-- Quick Summary Infographic Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Error Categories Breakdown -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Error Categories Breakdown</h3>
+              <p class="text-[11px] text-slate-500">Click any category bar to filter the defect list</p>
+            </div>
+            <span id="catDistinctBadge" class="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-indigo-50 text-indigo-700">0 Categories</span>
+          </div>
+          <div id="categoryInfographic" class="space-y-3 max-h-56 overflow-y-auto custom-scrollbar pr-1"></div>
+        </div>
+
+        <!-- Field Description Breakdown -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Field Description Breakdown</h3>
+              <p class="text-[11px] text-slate-500">Click any description bar to filter the defect list</p>
+            </div>
+            <span id="descDistinctBadge" class="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-violet-50 text-violet-700">0 Descriptions</span>
+          </div>
+          <div id="descriptionInfographic" class="space-y-3 max-h-56 overflow-y-auto custom-scrollbar pr-1"></div>
+        </div>
+      </div>
+
+      <!-- Defect Directory Table -->
       <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -139,7 +164,8 @@
             <p class="text-xs text-slate-500">Review each defect record below and click Acknowledge to confirm.</p>
           </div>
           <div class="flex flex-wrap items-center gap-3">
-            <input type="text" id="userSearchInput" placeholder="Search image, field, site..." class="px-3.5 py-2 text-xs border border-slate-300 rounded-lg outline-none w-56" />
+            <input type="text" id="userSearchInput" placeholder="Search category, field, site..." class="px-3.5 py-2 text-xs border border-slate-300 rounded-lg outline-none w-56" />
+            <button type="button" id="clearSearchBtn" class="hidden px-2.5 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">Clear</button>
             <select id="userStatusFilter" class="px-3.5 py-2 text-xs border border-slate-300 rounded-lg outline-none bg-white">
               <option value="ALL">All Statuses</option>
               <option value="PENDING">Pending Only</option>
@@ -153,14 +179,14 @@
             <thead>
               <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase">
                 <th class="py-3 px-4">Date</th>
-                <th class="py-3 px-4">Image Number</th>
-                <th class="py-3 px-4">Field Name</th>
-                <th class="py-3 px-4">Bill TYPE</th>
-                <th class="py-3 px-4">FIELD DESCRIPTION</th>
                 <th class="py-3 px-4">UserID</th>
+                <th class="py-3 px-4">Site Name</th>
+                <th class="py-3 px-4">Error Categories</th>
+                <th class="py-3 px-4">Bill TYPE</th>
+                <th class="py-3 px-4">Field Name</th>
+                <th class="py-3 px-4">FIELD DESCRIPTION</th>
                 <th class="py-3 px-4">KeyedAs</th>
                 <th class="py-3 px-4">ShouldBe</th>
-                <th class="py-3 px-4">Site Name</th>
                 <th class="py-3 px-4 text-center sticky right-0 bg-slate-50">Acknowledgement</th>
               </tr>
             </thead>
@@ -386,10 +412,27 @@
       showToast('Data refreshed', false);
     });
 
-    byId('userSearchInput').addEventListener('input', renderUserTable);
+    byId('userSearchInput').addEventListener('input', function() {
+      toggleClearBtn();
+      renderUserTable();
+    });
+    byId('clearSearchBtn').addEventListener('click', function() {
+      byId('userSearchInput').value = '';
+      toggleClearBtn();
+      renderUserTable();
+    });
     byId('userStatusFilter').addEventListener('change', renderUserTable);
     byId('supDateFilter').addEventListener('input', renderSupervisorTable);
     byId('supUserFilter').addEventListener('input', renderSupervisorTable);
+
+    function toggleClearBtn() {
+      var val = byId('userSearchInput').value.trim();
+      if (val) {
+        showEl('clearSearchBtn');
+      } else {
+        hideEl('clearSearchBtn');
+      }
+    }
 
     function setTableMessage(tbody, cols, text, isErr) {
       tbody.innerHTML = '';
@@ -414,6 +457,7 @@
         }
         userDefectsData = res.defects || [];
         updateUserStats();
+        renderInfographics();
         renderUserTable();
       } catch (ex) {
         setTableMessage(tbody, 10, 'Failed to load: ' + ex.message, true);
@@ -430,6 +474,95 @@
       byId('userPendingCount').textContent = total - ack;
     }
 
+    function buildBreakdownChart(containerId, badgeId, labelSuffix, fieldKey, barColor) {
+      var container = byId(containerId);
+      var badge = byId(badgeId);
+      container.innerHTML = '';
+
+      var counts = {};
+      userDefectsData.forEach(function(item) {
+        var raw = String(item[fieldKey] || '').trim() || 'Unspecified';
+        counts[raw] = (counts[raw] || 0) + 1;
+      });
+
+      var entries = Object.keys(counts).map(function(k) {
+        return { label: k, count: counts[k] };
+      }).sort(function(a, b) {
+        return b.count - a.count;
+      });
+
+      badge.textContent = entries.length + ' ' + labelSuffix;
+
+      if (entries.length === 0) {
+        var empty = document.createElement('p');
+        empty.className = 'text-xs text-slate-400 py-6 text-center';
+        empty.textContent = 'No data available.';
+        container.appendChild(empty);
+        return;
+      }
+
+      var total = userDefectsData.length || 1;
+      var maxCount = entries[0].count || 1;
+
+      entries.forEach(function(entry) {
+        var pctOfTotal = Math.round((entry.count / total) * 100);
+        var relWidth = Math.max(6, Math.round((entry.count / maxCount) * 100));
+
+        var rowBtn = document.createElement('button');
+        rowBtn.type = 'button';
+        rowBtn.className = 'w-full text-left group p-1.5 rounded-lg hover:bg-slate-50 transition';
+        rowBtn.title = 'Click to filter by: ' + entry.label;
+        rowBtn.addEventListener('click', function() {
+          byId('userSearchInput').value = entry.label === 'Unspecified' ? '' : entry.label;
+          toggleClearBtn();
+          renderUserTable();
+        });
+
+        var topLine = document.createElement('div');
+        topLine.className = 'flex items-center justify-between text-xs mb-1 gap-2';
+
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'font-medium text-slate-700 group-hover:text-indigo-600 truncate';
+        nameSpan.textContent = entry.label;
+
+        var countSpan = document.createElement('span');
+        countSpan.className = 'font-semibold text-slate-900 shrink-0';
+        countSpan.textContent = entry.count + ' (' + pctOfTotal + '%)';
+
+        topLine.appendChild(nameSpan);
+        topLine.appendChild(countSpan);
+
+        var track = document.createElement('div');
+        track.className = 'w-full h-2 bg-slate-100 rounded-full overflow-hidden';
+
+        var fill = document.createElement('div');
+        fill.className = 'h-full rounded-full transition-all duration-300 ' + barColor;
+        fill.style.width = relWidth + '%';
+
+        track.appendChild(fill);
+        rowBtn.appendChild(topLine);
+        rowBtn.appendChild(track);
+        container.appendChild(rowBtn);
+      });
+    }
+
+    function renderInfographics() {
+      buildBreakdownChart(
+        'categoryInfographic',
+        'catDistinctBadge',
+        'Categories',
+        'errorCategories',
+        'bg-indigo-600'
+      );
+      buildBreakdownChart(
+        'descriptionInfographic',
+        'descDistinctBadge',
+        'Descriptions',
+        'fieldDescription',
+        'bg-violet-600'
+      );
+    }
+
     function renderUserTable() {
       var tbody = byId('userDefectsBody');
       var q = byId('userSearchInput').value.trim().toLowerCase();
@@ -441,9 +574,9 @@
         if (status === 'ACKNOWLEDGED' && !isAck) return false;
         if (!q) return true;
         var visibleFields = [
-          item.date, item.imageNumber, item.fieldName, item.billType,
-          item.fieldDescription, item.userId, item.keyedAs, item.shouldBe,
-          item.siteName, item.acknowledgement
+          item.date, item.userId, item.siteName, item.errorCategories,
+          item.billType, item.fieldName, item.fieldDescription,
+          item.keyedAs, item.shouldBe, item.acknowledgement
         ];
         return visibleFields.some(function(v) {
           return String(v || '').toLowerCase().includes(q);
@@ -462,14 +595,14 @@
 
         var cols = [
           { val: row.date, cls: 'py-3 px-4 font-medium text-slate-900' },
-          { val: row.imageNumber, cls: 'py-3 px-4 font-mono text-indigo-700' },
-          { val: row.fieldName, cls: 'py-3 px-4 font-medium' },
-          { val: row.billType, cls: 'py-3 px-4' },
-          { val: row.fieldDescription, cls: 'py-3 px-4 max-w-xs truncate' },
           { val: row.userId, cls: 'py-3 px-4 font-medium' },
+          { val: row.siteName, cls: 'py-3 px-4' },
+          { val: row.errorCategories, cls: 'py-3 px-4 font-semibold text-indigo-700' },
+          { val: row.billType, cls: 'py-3 px-4' },
+          { val: row.fieldName, cls: 'py-3 px-4 font-medium' },
+          { val: row.fieldDescription, cls: 'py-3 px-4 max-w-xs truncate' },
           { val: row.keyedAs, cls: 'py-3 px-4 text-red-600 bg-red-50/40 font-medium' },
-          { val: row.shouldBe, cls: 'py-3 px-4 text-emerald-700 bg-emerald-50/40 font-medium' },
-          { val: row.siteName, cls: 'py-3 px-4' }
+          { val: row.shouldBe, cls: 'py-3 px-4 text-emerald-700 bg-emerald-50/40 font-medium' }
         ];
 
         cols.forEach(function(c) {
